@@ -1,0 +1,24 @@
+{
+  "random_forest": {
+    "model_type": "random_forest",
+    "filename": "model_random_forest.pkl",
+    "trained_at": "2026-04-02T07:07:34.070962",
+    "training_samples": 25,
+    "metrics": {
+      "mae_cv": 9.3084,
+      "mae_train": 2.3384,
+      "rmse_train": 3.4528
+    }
+  },
+  "gradient_boosting": {
+    "model_type": "gradient_boosting",
+    "filename": "model_gradient_boosting.pkl",
+    "trained_at": "2026-04-04T05:49:34.900219",
+    "training_samples": 25,
+    "metrics": {
+      "mae_cv": 4.8924,
+      "mae_train": 0.0094,
+      "rmse_train": 0.0156
+    }
+  }
+}

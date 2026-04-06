@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>StockAI — Inventory Intelligence</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f4f6f9;color:#1a1a2e;font-size:14px}
+.layout{display:flex;height:100vh}
+.sidebar{width:210px;min-width:210px;background:#fff;border-right:1px solid #eee;display:flex;flex-direction:column;padding:0}
+.logo{padding:18px 16px 14px;border-bottom:1px solid #eee}
+.logo-name{font-size:16px;font-weight:700;color:#1a1a2e}
+.logo-sub{font-size:11px;color:#aaa;margin-top:2px}
+.nav{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;color:#666;border-left:3px solid transparent;transition:all .15s}
+.nav:hover{background:#f7f8fa;color:#1a1a2e}
+.nav.active{background:#eff6ff;color:#1d4ed8;border-left-color:#1d4ed8;font-weight:500}
+.nav-ic{font-size:15px;width:18px;text-align:center}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{background:#fff;border-bottom:1px solid #eee;padding:10px 22px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.topbar-title{font-size:15px;font-weight:600}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.content{flex:1;overflow-y:auto;padding:22px}
+.page{display:none}.page.active{display:block}
+
+/* Cards */
+.card{background:#fff;border:1px solid #eee;border-radius:12px;padding:18px}
+.card+.card{margin-top:14px}
+.card-title{font-size:13px;font-weight:600;color:#1a1a2e;margin-bottom:14px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+
+/* Metric cards */
+.mc{background:#f8f9fb;border-radius:10px;padding:14px 16px}
+.mc-label{font-size:11px;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.mc-val{font-size:24px;font-weight:700}
+.mc-sub{font-size:11px;color:#bbb;margin-top:4px}
+
+/* Badges */
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:500}
+.b-ok{background:#dcfce7;color:#166534}
+.b-warn{background:#fef9c3;color:#854d0e}
+.b-danger{background:#fee2e2;color:#991b1b}
+.b-info{background:#dbeafe;color:#1e40af}
+.b-gray{background:#f3f4f6;color:#6b7280}
+
+/* Table */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:7px 10px;font-size:11px;font-weight:600;color:#9ca3af;border-bottom:1px solid #f0f0f0;text-transform:uppercase;letter-spacing:.04em}
+td{padding:9px 10px;border-bottom:1px solid #f8f8f8;color:#374151;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafafa}
+.mono{font-family:monospace;font-size:12px}
+
+/* Inputs / buttons */
+input,select,textarea{border:1px solid #e5e7eb;border-radius:8px;padding:7px 10px;font-size:13px;font-family:inherit;background:#fff;color:#1a1a2e;width:100%}
+input:focus,select:focus{outline:none;border-color:#6366f1;box-shadow:0 0 0 3px #6366f110}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;font-size:13px;font-weight:500;border:1px solid #e5e7eb;border-radius:8px;background:#fff;color:#374151;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap}
+.btn:hover{background:#f9fafb;border-color:#d1d5db}
+.btn-primary{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
+.btn-primary:hover{background:#1e40af}
+.btn-success{background:#16a34a;border-color:#16a34a;color:#fff}
+.btn-success:hover{background:#15803d}
+.btn-danger{background:#dc2626;border-color:#dc2626;color:#fff}
+.btn-danger:hover{background:#b91c1c}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* Upload zone */
+.upload-zone{border:2px dashed #d1d5db;border-radius:10px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s}
+.upload-zone:hover,.upload-zone.drag{border-color:#6366f1;background:#f5f3ff}
+.upload-zone input{display:none}
+.upload-icon{font-size:28px;margin-bottom:8px}
+.upload-title{font-size:14px;font-weight:600;color:#374151;margin-bottom:4px}
+.upload-sub{font-size:12px;color:#9ca3af}
+.upload-accepted{font-size:11px;color:#6366f1;margin-top:6px;font-weight:500}
+
+/* Step flow */
+.step-flow{display:flex;align-items:center;gap:8px;margin-bottom:22px}
+.step{display:flex;align-items:center;gap:8px}
+.step-num{width:26px;height:26px;border-radius:50%;background:#e5e7eb;color:#6b7280;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.step.done .step-num{background:#16a34a;color:#fff}
+.step.active .step-num{background:#1d4ed8;color:#fff}
+.step-label{font-size:12px;color:#6b7280;font-weight:500}
+.step.done .step-label{color:#16a34a}
+.step.active .step-label{color:#1d4ed8}
+.step-sep{flex:1;height:1px;background:#e5e7eb;min-width:20px}
+.step.done .step-sep{background:#16a34a}
+
+/* Progress bar */
+.progress-wrap{background:#e5e7eb;border-radius:99px;height:6px;overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;border-radius:99px;background:#1d4ed8;transition:width .5s}
+
+/* Alert box */
+.alert-box{padding:12px 14px;border-radius:8px;font-size:13px;margin-bottom:12px}
+.alert-info{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+.alert-success{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+.alert-warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+.alert-error{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+
+/* Prediction bars */
+.pred-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.pred-lbl{font-size:12px;color:#6b7280;width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pred-bg{flex:1;height:6px;background:#f3f4f6;border-radius:99px;overflow:hidden}
+.pred-fill{height:100%;border-radius:99px;transition:width .8s}
+.pred-num{font-size:12px;font-weight:600;color:#1a1a2e;width:38px;text-align:right}
+
+/* Model selector */
+.model-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.model-tab{padding:5px 12px;border:1px solid #e5e7eb;border-radius:99px;font-size:12px;font-weight:500;cursor:pointer;color:#6b7280;background:#fff;transition:all .15s}
+.model-tab:hover{border-color:#6366f1;color:#6366f1}
+.model-tab.active{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
+
+/* Empty state */
+.empty{text-align:center;padding:48px 20px;color:#9ca3af}
+.empty-icon{font-size:36px;margin-bottom:12px}
+.empty-title{font-size:15px;font-weight:600;color:#6b7280;margin-bottom:6px}
+.empty-sub{font-size:13px}
+
+/* Spinner */
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid #e5e7eb;border-top-color:#1d4ed8;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Trend arrows */
+.trend-up::before{content:"↑ ";color:#16a34a}
+.trend-dn::before{content:"↓ ";color:#dc2626}
+.trend-st::before{content:"→ ";color:#6b7280}
+
+/* Notification dot */
+.notif{display:inline-block;width:7px;height:7px;background:#dc2626;border-radius:50%;margin-left:4px;vertical-align:middle}
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-name">StockAI</div>
+      <div class="logo-sub">Inventory Intelligence</div>
+    </div>
+    <div class="nav active" onclick="go('setup')"><span class="nav-ic">⚡</span> Setup <span id="setup-dot" class="notif" style="display:none"></span></div>
+    <div class="nav" onclick="go('inventory')"><span class="nav-ic">☰</span> Inventory</div>
+    <div class="nav" onclick="go('sales')"><span class="nav-ic">◈</span> Sales History</div>
+    <div class="nav" onclick="go('predict')"><span class="nav-ic">◆</span> AI Predictions</div>
+    <div class="nav" onclick="go('model')"><span class="nav-ic">⚙</span> Model Info</div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="page-title">Setup</div>
+      <div class="topbar-right">
+        <span id="status-pill" style="font-size:11px;padding:3px 10px;border-radius:99px;background:#f3f4f6;color:#6b7280">Loading...</span>
+        <button class="btn btn-sm" onclick="refreshStatus()">Refresh</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ══════════ SETUP PAGE ══════════ -->
+      <div class="page active" id="page-setup">
+
+        <!-- Step flow indicator -->
+        <div class="step-flow" id="step-flow">
+          <div class="step" id="s1"><div class="step-num">1</div><div class="step-label">Upload Inventory</div></div>
+          <div class="step-sep"></div>
+          <div class="step" id="s2"><div class="step-num">2</div><div class="step-label">Upload Sales</div></div>
+          <div class="step-sep"></div>
+          <div class="step" id="s3"><div class="step-num">3</div><div class="step-label">Train Model</div></div>
+          <div class="step-sep"></div>
+          <div class="step" id="s4"><div class="step-num">4</div><div class="step-label">View Predictions</div></div>
+        </div>
+
+        <div class="grid-2">
+          <!-- Step 1: Upload Inventory -->
+          <div class="card">
+            <div class="card-title">Step 1 — Upload Inventory CSV</div>
+            <div id="inv-msg"></div>
+            <div class="upload-zone" id="inv-zone" onclick="document.getElementById('inv-file').click()"
+                 ondragover="event.preventDefault();this.classList.add('drag')"
+                 ondragleave="this.classList.remove('drag')"
+                 ondrop="handleDrop(event,'inv')">
+              <input type="file" id="inv-file" accept=".csv,.xlsx" onchange="uploadInventory(this)">
+              <div class="upload-icon">📦</div>
+              <div class="upload-title">Inventory CSV</div>
+              <div class="upload-sub">Click or drag & drop</div>
+              <div class="upload-accepted">SKU · Product/Name · Stock · [Category, Price, Threshold]</div>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+              <label style="font-size:12px;color:#6b7280;display:flex;align-items:center;gap:4px;cursor:pointer">
+                <input type="checkbox" id="inv-replace" style="width:auto"> Replace existing inventory
+              </label>
+            </div>
+            <div id="inv-result" style="margin-top:10px"></div>
+          </div>
+
+          <!-- Step 2: Upload Sales -->
+          <div class="card">
+            <div class="card-title">Step 2 — Upload Sales History CSV</div>
+            <div id="sales-msg"></div>
+            <div class="upload-zone" id="sales-zone" onclick="document.getElementById('sales-file').click()"
+                 ondragover="event.preventDefault();this.classList.add('drag')"
+                 ondragleave="this.classList.remove('drag')"
+                 ondrop="handleDrop(event,'sales')">
+              <input type="file" id="sales-file" accept=".csv,.xlsx" onchange="uploadSales(this)">
+              <div class="upload-icon">📊</div>
+              <div class="upload-title">Sales History CSV</div>
+              <div class="upload-sub">Click or drag & drop</div>
+              <div class="upload-accepted">sku/product_id · quantity/units_sold · [date/sold_at]</div>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+              <label style="font-size:12px;color:#6b7280;display:flex;align-items:center;gap:4px;cursor:pointer">
+                <input type="checkbox" id="sales-replace" style="width:auto"> Replace existing sales
+              </label>
+            </div>
+            <div id="sales-result" style="margin-top:10px"></div>
+          </div>
+        </div>
+
+        <!-- Step 3: Train -->
+        <div class="card">
+          <div class="card-title">Step 3 — Train the ML Model</div>
+          <p style="font-size:13px;color:#6b7280;margin-bottom:14px">
+            Choose an algorithm. The model learns demand patterns from your sales history and uses them to predict future demand for each SKU in your current inventory.
+          </p>
+          <div class="model-tabs" id="train-model-tabs">
+            <div class="model-tab active" onclick="selectTrainModel('random_forest',this)">Random Forest</div>
+            <div class="model-tab" onclick="selectTrainModel('gradient_boosting',this)">Gradient Boosting</div>
+            <div class="model-tab" onclick="selectTrainModel('linear_regression',this)">Linear Regression</div>
+            <div class="model-tab" onclick="selectTrainModel('ridge_regression',this)">Ridge Regression</div>
+          </div>
+          <div id="train-algo-desc" style="font-size:12px;color:#6b7280;margin-bottom:14px;background:#f8f9fb;padding:10px;border-radius:8px"></div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <button class="btn btn-success" id="train-btn" onclick="trainModel()">Train Model</button>
+            <div id="train-spinner" style="display:none"><div class="spinner"></div></div>
+            <div id="train-status" style="font-size:13px;color:#6b7280"></div>
+          </div>
+          <div id="train-result" style="margin-top:12px"></div>
+        </div>
+
+        <!-- Step 4: CTA -->
+        <div class="card" style="text-align:center;padding:24px">
+          <div style="font-size:15px;font-weight:600;margin-bottom:8px">Ready to see predictions?</div>
+          <p style="font-size:13px;color:#6b7280;margin-bottom:14px">Once trained, the model predicts 7-day demand for every item in your inventory.</p>
+          <button class="btn btn-primary" onclick="go('predict')">View AI Predictions →</button>
+        </div>
+
+        <!-- Reset -->
+        <div style="margin-top:14px;text-align:right">
+          <button class="btn btn-sm" style="color:#dc2626;border-color:#fecaca" onclick="resetAll()">Reset all data</button>
+        </div>
+      </div>
+
+      <!-- ══════════ INVENTORY PAGE ══════════ -->
+      <div class="page" id="page-inventory">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="card-title" style="margin-bottom:0">Current Inventory</div>
+            <div style="display:flex;gap:8px">
+              <input id="inv-search" placeholder="Search..." style="width:180px" oninput="filterInventory()">
+              <button class="btn btn-sm btn-primary" onclick="go('setup')">+ Upload CSV</button>
+            </div>
+          </div>
+          <div id="inv-empty" class="empty" style="display:none">
+            <div class="empty-icon">📦</div>
+            <div class="empty-title">No inventory yet</div>
+            <div class="empty-sub">Upload an inventory CSV in the Setup tab to get started.</div>
+          </div>
+          <div id="inv-table-wrap">
+            <table>
+              <thead><tr><th>SKU</th><th>Product</th><th>Category</th><th>Stock</th><th>Threshold</th><th>Price</th><th>Status</th></tr></thead>
+              <tbody id="inv-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ SALES PAGE ══════════ -->
+      <div class="page" id="page-sales">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="card-title" style="margin-bottom:0">Sales History</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span id="sales-count-label" style="font-size:12px;color:#9ca3af"></span>
+              <button class="btn btn-sm btn-primary" onclick="go('setup')">+ Upload CSV</button>
+            </div>
+          </div>
+          <div id="sales-empty" class="empty" style="display:none">
+            <div class="empty-icon">📊</div>
+            <div class="empty-title">No sales data yet</div>
+            <div class="empty-sub">Upload a sales history CSV in the Setup tab.</div>
+          </div>
+          <div id="sales-table-wrap">
+            <table>
+              <thead><tr><th>Date</th><th>SKU</th><th>Product</th><th>Qty Sold</th><th>Source</th></tr></thead>
+              <tbody id="sales-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ PREDICTIONS PAGE ══════════ -->
+      <div class="page" id="page-predict">
+        <div id="pred-no-model" class="alert-box alert-warn" style="display:none">
+          No trained model found. Go to Setup → Train the model first.
+        </div>
+        <div id="pred-no-inv" class="alert-box alert-warn" style="display:none">
+          No inventory loaded. Upload an inventory CSV in Setup first.
+        </div>
+
+        <div id="pred-content">
+          <!-- Summary row -->
+          <div class="grid-4" id="pred-metrics"></div>
+
+          <div class="grid-2">
+            <!-- Demand bars -->
+            <div class="card">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+                <div class="card-title" style="margin-bottom:0">7-Day Demand Forecast</div>
+                <div style="display:flex;gap:6px">
+                  <span style="font-size:11px;display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#dc2626;border-radius:2px;display:inline-block"></span>Needs reorder</span>
+                  <span style="font-size:11px;display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#16a34a;border-radius:2px;display:inline-block"></span>OK</span>
+                </div>
+              </div>
+              <div id="pred-bars"></div>
+            </div>
+
+            <!-- Reorder table -->
+            <div class="card">
+              <div class="card-title">Reorder Recommendations</div>
+              <div id="reorder-empty" style="display:none;font-size:13px;color:#16a34a;padding:10px 0">All items have sufficient stock for the next 7 days.</div>
+              <table id="reorder-table">
+                <thead><tr><th>Product</th><th>Stock</th><th>7d Need</th><th>Order Qty</th><th>Urgency</th></tr></thead>
+                <tbody id="reorder-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Full predictions table -->
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div class="card-title" style="margin-bottom:0">All SKU Predictions</div>
+              <div style="display:flex;gap:8px">
+                <span style="font-size:12px;color:#9ca3af;align-self:center" id="pred-model-label"></span>
+                <button class="btn btn-sm btn-primary" onclick="loadPredictions()">Refresh</button>
+              </div>
+            </div>
+            <table>
+              <thead><tr>
+                <th>SKU</th><th>Product</th><th>Category</th>
+                <th>Current Stock</th><th>Predicted 7d</th>
+                <th>Avg Daily</th><th>Days Left</th><th>Trend</th><th>Alert</th>
+              </tr></thead>
+              <tbody id="pred-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ MODEL INFO PAGE ══════════ -->
+      <div class="page" id="page-model">
+        <div id="model-no-data" class="alert-box alert-info" style="display:none">
+          No trained models yet. Complete Setup first.
+        </div>
+        <div id="model-cards"></div>
+        <div class="card" style="margin-top:14px">
+          <div class="card-title">How Each Algorithm Works</div>
+          <div id="algo-explainers"></div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<script>
+// ════════════════════════════════════════════
+//  State
+// ════════════════════════════════════════════
+const state = {
+  currentPage: 'setup',
+  trainModel: 'random_forest',
+  status: { has_inventory: false, has_sales: false, trained_models: [] },
+  inventory: [],
+  sales: [],
+  predictions: [],
+};
+
+const ALGO_DESC = {
+  random_forest: {
+    name: 'Random Forest',
+    desc: 'Builds many decision trees on random subsets of features and averages their predictions. Robust, handles non-linear patterns, resistant to outliers. Best for general use.',
+    features: 'avg_daily_7d, avg_daily_14d, avg_daily_30d, trend, acceleration, std_daily'
+  },
+  gradient_boosting: {
+    name: 'Gradient Boosting',
+    desc: 'Builds trees sequentially, each correcting the errors of the previous. Highly accurate on structured data. Uses learning_rate=0.1 to prevent overfitting.',
+    features: 'Same 9 features as Random Forest'
+  },
+  linear_regression: {
+    name: 'Linear Regression (OLS)',
+    desc: 'Fits a straight line y = w1*x1 + ... + wn*xn to predict demand. Simple, fast, interpretable. Works well when demand trends are roughly linear.',
+    features: 'StandardScaler normalises features before fitting'
+  },
+  ridge_regression: {
+    name: 'Ridge Regression (L2)',
+    desc: 'Linear regression with L2 regularisation (alpha=1.0). Prevents overfitting when features are correlated. More stable than plain OLS on small datasets.',
+    features: 'Same as Linear Regression + L2 penalty on weights'
+  },
+};
+
+// ════════════════════════════════════════════
+//  Navigation
+// ════════════════════════════════════════════
+const PAGE_TITLES = {
+  setup:'Setup', inventory:'Inventory', sales:'Sales History',
+  predict:'AI Predictions', model:'Model Info'
+};
+
+function go(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  const navs = document.querySelectorAll('.nav');
+  const idx = ['setup','inventory','sales','predict','model'].indexOf(page);
+  if (navs[idx]) navs[idx].classList.add('active');
+  document.getElementById('page-title').textContent = PAGE_TITLES[page] || page;
+  state.currentPage = page;
+  if (page === 'inventory') loadInventory();
+  if (page === 'sales') loadSales();
+  if (page === 'predict') loadPredictions();
+  if (page === 'model') loadModelInfo();
+}
+
+// ════════════════════════════════════════════
+//  Status
+// ════════════════════════════════════════════
+async function refreshStatus() {
+  try {
+    const r = await fetch('/api/status');
+    state.status = await r.json();
+  } catch (e) {
+    state.status = { has_inventory: false, has_sales: false, trained_models: [] };
+  }
+  updateStatusUI();
+}
+
+function updateStatusUI() {
+  const s = state.status;
+  const pill = document.getElementById('status-pill');
+  if (s.has_inventory && s.has_sales && s.trained_models.length) {
+    pill.textContent = 'Ready ✓';
+    pill.style.background = '#dcfce7'; pill.style.color = '#166534';
+  } else if (s.has_inventory || s.has_sales) {
+    pill.textContent = 'Partial setup';
+    pill.style.background = '#fef9c3'; pill.style.color = '#854d0e';
+  } else {
+    pill.textContent = 'No data yet';
+    pill.style.background = '#f3f4f6'; pill.style.color = '#6b7280';
+  }
+  // Step indicators
+  const setStep = (id, done, active) => {
+    const el = document.getElementById(id);
+    el.classList.toggle('done', done);
+    el.classList.toggle('active', active && !done);
+  };
+  setStep('s1', s.has_inventory, !s.has_inventory);
+  setStep('s2', s.has_sales, s.has_inventory && !s.has_sales);
+  setStep('s3', s.trained_models.length > 0, s.has_inventory && s.has_sales && !s.trained_models.length);
+  setStep('s4', false, s.trained_models.length > 0);
+}
+
+// ════════════════════════════════════════════
+//  Upload Inventory
+// ════════════════════════════════════════════
+async function uploadInventory(input) {
+  const file = input.files[0]; if (!file) return;
+  const replace = document.getElementById('inv-replace').checked;
+  showMsg('inv-result', 'info', `Uploading ${file.name}...`);
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('replace', replace ? 'true' : 'false');
+  try {
+    const r = await fetch('/api/inventory/upload', { method:'POST', body:fd });
+    const d = await r.json();
+    if (d.errors && d.errors.length) {
+      showMsg('inv-result', 'error', `Imported ${d.imported} items. Errors: ${d.errors.join(', ')}`);
+    } else {
+      showMsg('inv-result', 'success', `✓ Imported ${d.imported} inventory items from ${file.name}`);
+    }
+    await refreshStatus();
+  } catch (e) {
+    showMsg('inv-result', 'error', 'Upload failed: ' + e.message);
+  }
+  input.value = '';
+}
+
+// ════════════════════════════════════════════
+//  Upload Sales
+// ════════════════════════════════════════════
+async function uploadSales(input) {
+  const file = input.files[0]; if (!file) return;
+  const replace = document.getElementById('sales-replace').checked;
+  showMsg('sales-result', 'info', `Uploading ${file.name}...`);
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('replace', replace ? 'true' : 'false');
+  try {
+    const r = await fetch('/api/sales/upload', { method:'POST', body:fd });
+    const d = await r.json();
+    if (d.errors && d.errors.length) {
+      showMsg('sales-result', 'error', `Imported ${d.imported}, skipped ${d.skipped}. Errors: ${d.errors.join(', ')}`);
+    } else {
+      showMsg('sales-result', 'success',
+        `✓ Imported ${d.imported} sales records from ${file.name}` +
+        (d.skipped ? ` (${d.skipped} skipped — SKU not in inventory)` : ''));
+    }
+    await refreshStatus();
+  } catch (e) {
+    showMsg('sales-result', 'error', 'Upload failed: ' + e.message);
+  }
+  input.value = '';
+}
+
+// ════════════════════════════════════════════
+//  Train
+// ════════════════════════════════════════════
+function selectTrainModel(m, el) {
+  state.trainModel = m;
+  document.querySelectorAll('.model-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  updateAlgoDesc();
+}
+
+function updateAlgoDesc() {
+  const a = ALGO_DESC[state.trainModel] || {};
+  document.getElementById('train-algo-desc').innerHTML =
+    `<strong>${a.name}:</strong> ${a.desc}<br><em style="font-size:11px">Features: ${a.features}</em>`;
+}
+
+async function trainModel() {
+  if (!state.status.has_sales) {
+    showMsg('train-result', 'warn', 'Upload sales data first (Step 2).');
+    return;
+  }
+  const btn = document.getElementById('train-btn');
+  const spinner = document.getElementById('train-spinner');
+  const status = document.getElementById('train-status');
+  btn.disabled = true;
+  spinner.style.display = 'inline-block';
+  status.textContent = 'Training...';
+  document.getElementById('train-result').innerHTML = '';
+  try {
+    const r = await fetch('/api/train', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ model_type: state.trainModel })
+    });
+    const d = await r.json();
+    if (d.error) {
+      showMsg('train-result', 'error', d.error);
+      status.textContent = 'Failed';
+    } else {
+      showMsg('train-result', 'success',
+        `✓ Trained <strong>${d.model_type}</strong> on ${d.training_samples} samples. ` +
+        `MAE: <strong>${d.mae}</strong> · RMSE: <strong>${d.rmse}</strong>`);
+      status.textContent = 'Done!';
+      await refreshStatus();
+    }
+  } catch (e) {
+    showMsg('train-result', 'error', 'Training error: ' + e.message);
+    status.textContent = 'Error';
+  }
+  btn.disabled = false;
+  spinner.style.display = 'none';
+}
+
+// ════════════════════════════════════════════
+//  Inventory Page
+// ════════════════════════════════════════════
+async function loadInventory() {
+  try {
+    const r = await fetch('/api/items');
+    state.inventory = await r.json();
+  } catch (e) { state.inventory = []; }
+  renderInventory(state.inventory);
+}
+
+function filterInventory() {
+  const q = document.getElementById('inv-search').value.toLowerCase();
+  renderInventory(state.inventory.filter(i =>
+    i.sku.toLowerCase().includes(q) ||
+    i.name.toLowerCase().includes(q) ||
+    (i.category||'').toLowerCase().includes(q)
+  ));
+}
+
+function renderInventory(items) {
+  const empty = document.getElementById('inv-empty');
+  const wrap  = document.getElementById('inv-table-wrap');
+  if (!items.length) { empty.style.display=''; wrap.style.display='none'; return; }
+  empty.style.display='none'; wrap.style.display='';
+  document.getElementById('inv-body').innerHTML = items.map(i => {
+    const st = i.current_stock <= 0 ? 'b-danger' :
+               i.current_stock <= i.reorder_threshold ? 'b-warn' : 'b-ok';
+    const sl = i.current_stock <= 0 ? 'Out of stock' :
+               i.current_stock <= i.reorder_threshold ? 'Low stock' : 'OK';
+    return `<tr>
+      <td class="mono">${i.sku}</td>
+      <td>${i.name}</td>
+      <td><span class="badge b-gray">${i.category||'General'}</span></td>
+      <td><strong>${i.current_stock}</strong></td>
+      <td>${i.reorder_threshold}</td>
+      <td>${i.price > 0 ? '$'+i.price.toFixed(2) : '—'}</td>
+      <td><span class="badge ${st}">${sl}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════
+//  Sales Page
+// ════════════════════════════════════════════
+async function loadSales() {
+  try {
+    const r = await fetch('/api/sales/recent?limit=200');
+    state.sales = await r.json();
+  } catch (e) { state.sales = []; }
+  renderSales();
+}
+
+function renderSales() {
+  const empty = document.getElementById('sales-empty');
+  const wrap  = document.getElementById('sales-table-wrap');
+  document.getElementById('sales-count-label').textContent =
+    state.sales.length ? state.sales.length + ' records (most recent first)' : '';
+  if (!state.sales.length) { empty.style.display=''; wrap.style.display='none'; return; }
+  empty.style.display='none'; wrap.style.display='';
+  document.getElementById('sales-body').innerHTML = state.sales.map(s => `<tr>
+    <td style="color:#6b7280">${s.sold_at ? s.sold_at.split('T')[0] : '—'}</td>
+    <td class="mono">${s.sku}</td>
+    <td>${s.name || s.sku}</td>
+    <td><strong>${s.quantity}</strong></td>
+    <td><span class="badge b-gray">${s.source||'upload'}</span></td>
+  </tr>`).join('');
+}
+
+// ════════════════════════════════════════════
+//  Predictions Page
+// ════════════════════════════════════════════
+async function loadPredictions() {
+  await refreshStatus();
+  const s = state.status;
+
+  document.getElementById('pred-no-inv').style.display   = !s.has_inventory ? '' : 'none';
+  document.getElementById('pred-no-model').style.display = !s.trained_models.length ? '' : 'none';
+  document.getElementById('pred-content').style.display  = (s.has_inventory && s.trained_models.length) ? '' : 'none';
+  if (!s.has_inventory || !s.trained_models.length) return;
+
+  const model = s.trained_models[s.trained_models.length - 1]; // latest trained
+  document.getElementById('pred-model-label').textContent = 'Model: ' + model;
+
+  let preds = [];
+  try {
+    const r = await fetch('/api/predict?model=' + model);
+    const d = await r.json();
+    if (d.error) { showGlobalErr(d.error); return; }
+    preds = d;
+    state.predictions = preds;
+  } catch (e) { showGlobalErr(e.message); return; }
+
+  // Metrics row
+  const alerts = preds.filter(p => p.alert).length;
+  const outOf  = preds.filter(p => p.current_stock === 0).length;
+  const topDemand = preds.length ? preds[0].predicted_demand_7d : 0;
+  document.getElementById('pred-metrics').innerHTML = [
+    { label:'Total SKUs',      val: preds.length,  color: '#1a1a2e', sub:'in inventory' },
+    { label:'Need Reorder',    val: alerts,         color: '#dc2626', sub:'low or critical' },
+    { label:'Out of Stock',    val: outOf,          color: outOf?'#dc2626':'#16a34a', sub:'zero units' },
+    { label:'Highest Demand',  val: topDemand,      color: '#1d4ed8', sub:'predicted 7-day' },
+  ].map(m => `<div class="mc">
+    <div class="mc-label">${m.label}</div>
+    <div class="mc-val" style="color:${m.color}">${m.val}</div>
+    <div class="mc-sub">${m.sub}</div>
+  </div>`).join('');
+
+  // Demand bars
+  const maxPred = Math.max(...preds.map(p => p.predicted_demand_7d), 1);
+  document.getElementById('pred-bars').innerHTML = preds.map(p => {
+    const pct = Math.round((p.predicted_demand_7d / maxPred) * 100);
+    const color = p.alert ? '#dc2626' : '#16a34a';
+    return `<div class="pred-row">
+      <div class="pred-lbl" title="${p.name}">${p.name}</div>
+      <div class="pred-bg"><div class="pred-fill" style="width:${pct}%;background:${color}"></div></div>
+      <div class="pred-num">${p.predicted_demand_7d}</div>
+    </div>`;
+  }).join('');
+
+  // Reorder table
+  const reorders = preds.filter(p => p.alert);
+  document.getElementById('reorder-empty').style.display = reorders.length ? 'none' : '';
+  document.getElementById('reorder-table').style.display = reorders.length ? '' : 'none';
+  document.getElementById('reorder-body').innerHTML = reorders.map(p => {
+    const need = Math.max(0, Math.round(p.predicted_demand_7d - p.current_stock + p.reorder_threshold));
+    const urg = p.current_stock === 0 ? ['b-danger','Urgent'] :
+                p.current_stock <= p.reorder_threshold ? ['b-warn','Soon'] : ['b-info','Plan'];
+    return `<tr>
+      <td>${p.name}</td>
+      <td>${p.current_stock}</td>
+      <td>${p.predicted_demand_7d}</td>
+      <td><strong>${need}</strong></td>
+      <td><span class="badge ${urg[0]}">${urg[1]}</span></td>
+    </tr>`;
+  }).join('');
+
+  // Full table
+  const trendClass = t => t==='rising'?'trend-up':t==='falling'?'trend-dn':'trend-st';
+  document.getElementById('pred-body').innerHTML = preds.map(p => `<tr>
+    <td class="mono">${p.sku}</td>
+    <td>${p.name}</td>
+    <td><span class="badge b-gray">${p.category||'General'}</span></td>
+    <td><strong>${p.current_stock}</strong></td>
+    <td><strong>${p.predicted_demand_7d}</strong></td>
+    <td>${p.avg_daily_sales}</td>
+    <td style="${p.days_until_stockout<7?'color:#dc2626;font-weight:600':''}">
+      ${p.days_until_stockout >= 999 ? '∞' : p.days_until_stockout + 'd'}
+    </td>
+    <td><span class="${trendClass(p.trend)}">${p.trend}</span></td>
+    <td>${p.alert
+      ? '<span class="badge b-danger">⚠ Alert</span>'
+      : '<span class="badge b-ok">OK</span>'}</td>
+  </tr>`).join('');
+}
+
+// ════════════════════════════════════════════
+//  Model Info Page
+// ════════════════════════════════════════════
+async function loadModelInfo() {
+  let info = {};
+  try {
+    const r = await fetch('/api/model/info');
+    info = await r.json();
+  } catch(e) {}
+
+  const noData = document.getElementById('model-no-data');
+  const cards  = document.getElementById('model-cards');
+
+  if (!Object.keys(info).length) {
+    noData.style.display = ''; cards.innerHTML = ''; return;
+  }
+  noData.style.display = 'none';
+
+  cards.innerHTML = Object.values(info).map(m => `
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">${ALGO_DESC[m.model_type]?.name || m.model_type}</div>
+        <span class="badge b-info">Trained</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+        ${[
+          ['Trained At', m.trained_at ? m.trained_at.split('T')[0] : '—'],
+          ['Training Samples', m.training_samples],
+          ['MAE (CV)', m.metrics?.mae_cv ?? '—'],
+          ['RMSE (Train)', m.metrics?.rmse_train ?? '—'],
+        ].map(([l,v]) => `<div class="mc">
+          <div class="mc-label">${l}</div>
+          <div class="mc-val" style="font-size:18px">${v}</div>
+        </div>`).join('')}
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:#6b7280;background:#f8f9fb;padding:10px;border-radius:8px">
+        <strong>What the model learned:</strong> ${ALGO_DESC[m.model_type]?.desc || ''}
+        <br><strong>Features used:</strong> ${ALGO_DESC[m.model_type]?.features || '9 engineered features'}
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('algo-explainers').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      ${Object.values(ALGO_DESC).map(a => `
+        <div style="background:#f8f9fb;padding:14px;border-radius:10px">
+          <div style="font-size:13px;font-weight:600;margin-bottom:6px">${a.name}</div>
+          <div style="font-size:12px;color:#6b7280;line-height:1.6">${a.desc}</div>
+          <div style="font-size:11px;color:#9ca3af;margin-top:6px">Features: ${a.features}</div>
+        </div>
+      `).join('')}
+    </div>
+    <div style="margin-top:16px;font-size:13px;color:#6b7280;background:#eff6ff;border:1px solid #bfdbfe;padding:12px;border-radius:8px">
+      <strong>Feature engineering:</strong> For each SKU, the ML engine computes 9 features from the sales time series:
+      <em>avg_daily_7d, avg_daily_14d, avg_daily_30d, avg_daily_overall, max_daily, std_daily, trend (slope), acceleration, data_days</em>.
+      The model is trained to predict total demand in the next 7 days. Predictions use the current inventory CSV as input — the model outputs expected demand per SKU.
+    </div>
+  `;
+}
+
+// ════════════════════════════════════════════
+//  Reset
+// ════════════════════════════════════════════
+async function resetAll() {
+  if (!confirm('This will delete all inventory, sales data, and trained models. Are you sure?')) return;
+  await fetch('/api/inventory/clear', { method:'POST' });
+  await fetch('/api/sales/clear', { method:'POST' });
+  showMsg('inv-result', 'info', 'All data cleared.');
+  await refreshStatus();
+}
+
+// ════════════════════════════════════════════
+//  Drag & drop helpers
+// ════════════════════════════════════════════
+function handleDrop(event, type) {
+  event.preventDefault();
+  document.getElementById(type+'-zone').classList.remove('drag');
+  const file = event.dataTransfer.files[0];
+  if (!file) return;
+  const input = document.getElementById(type+'-file');
+  const dt = new DataTransfer(); dt.items.add(file); input.files = dt.files;
+  if (type === 'inv') uploadInventory(input);
+  else uploadSales(input);
+}
+
+// ════════════════════════════════════════════
+//  Utilities
+// ════════════════════════════════════════════
+function showMsg(id, type, html) {
+  const cls = { info:'alert-info', success:'alert-success', warn:'alert-warn', error:'alert-error' };
+  document.getElementById(id).innerHTML = `<div class="alert-box ${cls[type]||'alert-info'}">${html}</div>`;
+}
+function showGlobalErr(msg) {
+  alert('Error: ' + msg);
+}
+
+// ════════════════════════════════════════════
+//  Init
+// ════════════════════════════════════════════
+updateAlgoDesc();
+refreshStatus();
+</script>
+</body>
+</html>
